@@ -73,6 +73,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         /* 입력 비디오 숨김, JS로 처리됨 */
         #input_video {
             display: none;
+            object-fit: cover;
         }
 
         /* UI 레이어 (미러링되지 않음) */
@@ -214,6 +215,18 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         }
         window.addEventListener('resize', resize);
         resize();
+
+        function getCoverRect(imgW, imgH, canvasW, canvasH) {
+            const imgRatio = imgW / imgH;
+            const canvasRatio = canvasW / canvasH;
+            if (canvasRatio > imgRatio) {
+                const finalH = canvasW / imgRatio;
+                return { x: 0, y: (canvasH - finalH) / 2, w: canvasW, h: finalH };
+            } else {
+                const finalW = canvasH * imgRatio;
+                return { x: (canvasW - finalW) / 2, y: 0, w: finalW, h: canvasH };
+            }
+        }
 
         // --- 파티클 시스템 ---
         class Particle {
@@ -359,8 +372,8 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         domainVideo.style.left = "0";
         domainVideo.style.width = "100%";
         domainVideo.style.height = "100%";
-        domainVideo.style.zIndex = "60"; // 텍스트(z-50)와 플래시(z-50) 위에 오도록 보장
-        domainVideo.style.objectFit = "cover";
+        domainVideo.style.zIndex = "60"; 
+        domainVideo.style.objectFit = "contain";
         domainVideo.style.display = "none";
         domainVideo.style.opacity = "0";
         domainVideo.style.transition = "opacity 0.5s ease";
@@ -395,7 +408,10 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 const tempCtx = tempCanvas.getContext('2d');
                 
                 // 픽셀 데이터를 읽기 위해 마스크를 캔버스에 그리기
-                tempCtx.drawImage(frozenMask, 0, 0, tempCanvas.width, tempCanvas.height);
+                const videoW = videoElement.videoWidth || 1280;
+                const videoH = videoElement.videoHeight || 720;
+                const rect = getCoverRect(videoW, videoH, tempCanvas.width, tempCanvas.height);
+                tempCtx.drawImage(frozenMask, 0, 0, videoW, videoH, rect.x, rect.y, rect.w, rect.h);
                 
                 const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
                 const data = imgData.data;
@@ -503,6 +519,10 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
             const cx = isDomainActive ? domainOrigin.x : w / 2;
             const cy = isDomainActive ? domainOrigin.y : h / 2;
 
+            const videoW = videoElement.videoWidth || 1280;
+            const videoH = videoElement.videoHeight || 720;
+            const rect = getCoverRect(videoW, videoH, w, h);
+
             if (isDomainActive && frozenImage && frozenMask) {
                 // === 모드: 무량공처 (활성) ===
                 const elapsed = (Date.now() - domainStartTime) / 1000;
@@ -524,7 +544,7 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                     }
 
                     // 1. 원본 고정 이미지 그리기 (배경)
-                    canvasCtx.drawImage(frozenImage, 0, 0, w, h);
+                    canvasCtx.drawImage(frozenImage, 0, 0, videoW, videoH, rect.x, rect.y, rect.w, rect.h);
 
                     // 2. 하얀 침식 그리기
                     // 3초 대기 후 2.5초(3.0초 -> 5.5초) 동안 빠르게 확산
@@ -555,15 +575,19 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                     buffer.height = h;
                     const bCtx = buffer.getContext('2d');
                     
-                    bCtx.drawImage(frozenMask, 0, 0, w, h);
+                    bCtx.drawImage(frozenMask, 0, 0, videoW, videoH, rect.x, rect.y, rect.w, rect.h);
                     bCtx.globalCompositeOperation = 'source-in';
-                    bCtx.drawImage(frozenImage, 0, 0, w, h);
+                    bCtx.drawImage(frozenImage, 0, 0, videoW, videoH, rect.x, rect.y, rect.w, rect.h);
                     
                     canvasCtx.drawImage(buffer, 0, 0);
                     
                     // 4. 빛나는 눈 그리기 (1단계)
                     if (frozenFaceLandmarks) {
+                        canvasCtx.save();
+                        canvasCtx.translate(rect.x, rect.y);
+                        canvasCtx.scale(rect.w / w, rect.h / h);
                         drawGlowingEyes(canvasCtx, frozenFaceLandmarks, w, h);
+                        canvasCtx.restore();
                     }
 
                 } else if (elapsed < 6.7) {
@@ -619,9 +643,9 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                     buffer.width = w;
                     buffer.height = h;
                     const bCtx = buffer.getContext('2d');
-                    bCtx.drawImage(frozenMask, 0, 0, w, h);
+                    bCtx.drawImage(frozenMask, 0, 0, videoW, videoH, rect.x, rect.y, rect.w, rect.h);
                     bCtx.globalCompositeOperation = 'source-in';
-                    bCtx.drawImage(frozenImage, 0, 0, w, h);
+                    bCtx.drawImage(frozenImage, 0, 0, videoW, videoH, rect.x, rect.y, rect.w, rect.h);
                     
                     canvasCtx.shadowColor = "rgba(168, 85, 247, 0.8)";
                     canvasCtx.shadowBlur = 30;
@@ -630,7 +654,11 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                     
                     // 4. 빛나는 눈 그리기 (3단계)
                     if (frozenFaceLandmarks) {
+                        canvasCtx.save();
+                        canvasCtx.translate(rect.x, rect.y);
+                        canvasCtx.scale(rect.w / w, rect.h / h);
                         drawGlowingEyes(canvasCtx, frozenFaceLandmarks, w, h);
+                        canvasCtx.restore();
                     }
 
                 } else {
@@ -650,12 +678,14 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
                 
                 // 웹캠 피드 그리기
                 canvasCtx.save();
-                canvasCtx.drawImage(videoElement, 0, 0, w, h);
+                canvasCtx.drawImage(videoElement, 0, 0, videoW, videoH, rect.x, rect.y, rect.w, rect.h);
                 canvasCtx.restore();
 
                 // 가능한 경우 손 랜드마크 그리기
                 if (latestHandResults && latestHandResults.multiHandLandmarks) {
                     canvasCtx.save();
+                    canvasCtx.translate(rect.x, rect.y);
+                    canvasCtx.scale(rect.w / w, rect.h / h);
                     for (const landmarks of latestHandResults.multiHandLandmarks) {
                         drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
                                        {color: '#00FF00', lineWidth: 5});
