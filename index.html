@@ -352,6 +352,8 @@ a);requestAnimationFrame(function(){g(document.body)})})}var l=["material-icons"
         const domainVideo = document.createElement('video');
         domainVideo.src = "Video Project.mp4";
         domainVideo.id = "domain-video";
+        domainVideo.setAttribute('playsinline', '');
+        domainVideo.setAttribute('webkit-playsinline', '');
         domainVideo.style.position = "absolute";
         domainVideo.style.top = "0";
         domainVideo.style.left = "0";
